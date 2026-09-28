@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+.next
+dist
+coverage
+packages/db/drizzle
+docs/PROJECT_SPEC.md
+*.md
+next-env.d.ts
