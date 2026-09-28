@@ -5,6 +5,9 @@ export * from './config/thresholds';
 export * from './config/importance';
 export * from './config/sources';
 export * from './config/metrics';
+export * from './config/scheduling';
+export * from './util/hash';
+export * from './offerings/match';
 
 // Domain
 export * from './domain/workspace';

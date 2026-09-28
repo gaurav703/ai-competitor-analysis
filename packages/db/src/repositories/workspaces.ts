@@ -42,3 +42,13 @@ export async function getWorkspaceForOwner(
     .limit(1);
   return row;
 }
+
+// Not owner-scoped: for worker/system code operating on a workspace it already knows the id
+// of (e.g. from a Source row), not on behalf of a signed-in user. Never expose this to apps/web.
+export async function getWorkspace(
+  db: Database,
+  workspaceId: string,
+): Promise<Workspace | undefined> {
+  const [row] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+  return row;
+}

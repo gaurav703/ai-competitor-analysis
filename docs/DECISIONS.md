@@ -78,3 +78,10 @@ Manual/live testing (e.g. the Phase 1 "sign up → confirm → log in → create
 **Reason:** D-002 leaves `EMBEDDING_MODEL` unset until Phase 4 picks a real free embedding model on OpenRouter. 768 matches common free embedding models (e.g. BGE-base, nomic-embed) and unblocks the Phase 2 schema now.
 
 **Risk accepted:** pgvector fixes a column's dimension at creation. If the Phase 4 model choice needs a different size, that's a migration that drops and recreates both `embedding` columns (data loss on those two columns only, not the rows). Revisit when D-002's `EMBEDDING_MODEL` is actually set.
+
+**Extended 2026-09-29 (Phase 4):** with `EMBEDDING_MODEL` still unset, the pgvector similarity tier isn't just unused - it's not implemented yet, in either place SYSTEM_DESIGN calls for it:
+
+- Offering mapping (§6): the pipeline is alias match (exact, code) → LLM match → create new. The pgvector pre-filter step is replaced by a word-overlap (Jaccard) ranking in `packages/core/src/offerings/match.ts` (`rankOfferingCandidates`), which does the same job - narrow a large offering list to a short LLM-worthy candidate list - without needing embeddings.
+- Event dedup (§5 F5): same substitution, once F5 is implemented - `dedupKey` (exact) plus a word-overlap similarity fallback, not `event.embedding`.
+
+Both `embedding` columns stay in the schema, unpopulated, ready to wire in once a free embedding model is evaluated and confirmed. This is a real precision trade-off (word overlap misses paraphrases embeddings would catch) accepted to avoid picking an unvalidated embedding provider blind.
