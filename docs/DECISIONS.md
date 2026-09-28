@@ -68,3 +68,13 @@ Manual/live testing (e.g. the Phase 1 "sign up → confirm → log in → create
 **Reason:** avoids blocking scaffold-only phases on manual steps that don't yet exercise any feature; keeps momentum through infra phases.
 
 **Applied retroactively:** Phase 1 is marked done on infra verification alone (migration applied; worker logged `connected to database` / `connected to redis` / `worker started`; web app responded `200`) without the browser sign-up walkthrough.
+
+---
+
+## D-004: pgvector embedding dimension placeholder · 2026-09-28 · **Accepted**
+
+**Decision:** `event.embedding` and `offering.embedding` (both used for dedup/offering-match similarity, spec §9) are `vector(768)`, using Drizzle's native `vector()` column type from `drizzle-orm/pg-core` (no extra package needed — confirmed present in drizzle-orm 0.45.2). The Postgres `vector` extension is enabled via `CREATE EXTENSION IF NOT EXISTS vector;`, added by hand to the top of `packages/db/drizzle/0001_nasty_post.sql` since Drizzle doesn't manage extensions.
+
+**Reason:** D-002 leaves `EMBEDDING_MODEL` unset until Phase 4 picks a real free embedding model on OpenRouter. 768 matches common free embedding models (e.g. BGE-base, nomic-embed) and unblocks the Phase 2 schema now.
+
+**Risk accepted:** pgvector fixes a column's dimension at creation. If the Phase 4 model choice needs a different size, that's a migration that drops and recreates both `embedding` columns (data loss on those two columns only, not the rows). Revisit when D-002's `EMBEDDING_MODEL` is actually set.

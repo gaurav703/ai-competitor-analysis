@@ -1,5 +1,5 @@
 import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import type { IndustryCategory } from '@cip/core';
+import type { BusinessProfile, IndustryCategory } from '@cip/core';
 
 export type AlertSettings = {
   channels: ('email' | 'telegram')[];
@@ -23,6 +23,8 @@ export const workspaces = pgTable(
     industry: text('industry').notNull(),
     industryCategory: text('industry_category').$type<IndustryCategory>().notNull(),
     region: text('region'),
+    // Null until F1 onboarding extracts and the user confirms it (Phase 6).
+    businessProfile: jsonb('business_profile').$type<BusinessProfile>(),
     alertSettings: jsonb('alert_settings')
       .$type<AlertSettings>()
       .notNull()

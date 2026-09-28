@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @cip/db generate",
-    "db:migrate": "pnpm --filter @cip/db migrate"
+    "db:migrate": "pnpm --filter @cip/db migrate",
+    "db:seed": "pnpm --filter @cip/db seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
