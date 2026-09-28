@@ -56,3 +56,15 @@ Format: ID · date · status (Proposed / Accepted / Replaced) · decision · rea
 4. First paying customers or a public launch.
 
 Paid candidates at that point: Claude Haiku 4.5 ($1 / $5 per 1M tokens) for volume + Claude Sonnet 5 ($2 / $10) for explanations and briefs, estimated at about $10–20 a month at MVP scale; or paid models on OpenRouter. Re-run the same eval before switching.
+
+---
+
+## D-003: Testing cadence for phases 1–4 · 2026-09-28 · **Accepted**
+
+**Decision:** No manual/live-check gate on phases 1–4 (foundation, domain model & config, source monitoring, LLM extraction). These are infra/scaffold phases with no end-user-facing feature yet. A phase is done when lint, typecheck, tests and build pass and any automated/one-time infra check succeeds (e.g. worker connects to DB and Redis, migrations apply cleanly) — not when a human has walked through the UI.
+
+Manual/live testing (e.g. the Phase 1 "sign up → confirm → log in → create workspace" browser walkthrough) resumes as a required step starting **Phase 5 onward**, once user-facing features begin shipping and there's an actual feature to validate by hand.
+
+**Reason:** avoids blocking scaffold-only phases on manual steps that don't yet exercise any feature; keeps momentum through infra phases.
+
+**Applied retroactively:** Phase 1 is marked done on infra verification alone (migration applied; worker logged `connected to database` / `connected to redis` / `worker started`; web app responded `200`) without the browser sign-up walkthrough.
