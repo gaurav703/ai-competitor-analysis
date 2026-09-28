@@ -4,6 +4,7 @@ import { createLlmDeps } from './llm';
 import { logger } from './logger';
 import { startExtractEventsQueue } from './queues/extractEvents';
 import { startFetchSourceQueue } from './queues/fetchSource';
+import { startProcessEventQueue } from './queues/processEvent';
 import { startSystemQueue } from './queues/system';
 import { createRedis } from './redis';
 
@@ -21,10 +22,16 @@ async function main() {
   const llmDeps = createLlmDeps(db);
 
   const systemQueue = await startSystemQueue(redis, logger);
-  // Wired in dependency order: fetch-source enqueues into extract-events (spec §3 pipeline) -
-  // extract-events started first so fetch-source's enqueue function is ready. process-event
-  // (dedup, importance, storage) is Phase 5 and isn't wired up yet.
-  const extractEventsQueue = await startExtractEventsQueue(redis, db, llmDeps, logger);
+  // Wired in dependency order: fetch-source enqueues into extract-events, which enqueues into
+  // process-event (spec §3 pipeline) - each stage started before the one that feeds it.
+  const processEventQueue = await startProcessEventQueue(redis, db, logger);
+  const extractEventsQueue = await startExtractEventsQueue(
+    redis,
+    db,
+    llmDeps,
+    logger,
+    processEventQueue.enqueue,
+  );
   const fetchSourceQueue = await startFetchSourceQueue(
     redis,
     db,
@@ -40,6 +47,7 @@ async function main() {
     logger.info({ signal }, 'shutting down');
     await fetchSourceQueue.close();
     await extractEventsQueue.close();
+    await processEventQueue.close();
     await systemQueue.close();
     redis.disconnect();
     await closeDb();

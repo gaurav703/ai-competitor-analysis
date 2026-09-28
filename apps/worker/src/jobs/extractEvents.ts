@@ -14,62 +14,52 @@ import {
   callLlmStructured,
   EXTRACT_EVENTS_PROMPT_VERSION,
   extractedEventsSchema,
-  type ExtractedEvent,
 } from '@cip/prompts';
 import type { Logger } from 'pino';
 import { getAdapter } from '../adapters';
 import { lineDiff } from '../adapters/diff';
 import { mapOfferingMention } from './mapOffering';
+import type { ProcessEventJobData } from '../queues/names';
 
 export type ExtractEventsDeps = {
   db: Database;
   llmDeps: LlmDeps;
   logger: Logger;
-};
-
-// A validated, offering-mapped event, ready for process-event (F5, Phase 5) to dedup, score
-// and store. Phase 4 stops here: it doesn't write to the `events` table itself.
-export type CandidateEvent = ExtractedEvent & {
-  workspaceId: string;
-  competitorId: string;
-  sourceIds: string[];
-  snapshotIds: string[];
-  offeringsAffected: { id: string; name: string }[];
+  enqueueProcessEvent: (data: ProcessEventJobData) => Promise<void>;
 };
 
 // extract-events (SYSTEM_DESIGN §4.1/§4.3): Snapshot + previous -> diff -> LLM extract -> Zod
-// validate -> map offerings -> candidate events. Dedup, importance and storage are process-event
-// (F5/F6), a later phase - this job's done-when (spec §5 F4) is "every event is a validated
-// structured object linked to its sources [and offerings]", which candidates already satisfy.
+// validate -> map offerings -> candidate events, handed to process-event (F5) for dedup,
+// importance and storage.
 export async function runExtractEvents(
   deps: ExtractEventsDeps,
   sourceId: string,
   snapshotId: string,
-): Promise<CandidateEvent[]> {
-  const { db, llmDeps, logger } = deps;
+): Promise<{ extracted: number }> {
+  const { db, llmDeps, logger, enqueueProcessEvent } = deps;
 
   const source = await getSource(db, sourceId);
   const snapshot = await getSnapshot(db, snapshotId);
   if (!source || !snapshot) {
     logger.error({ sourceId, snapshotId }, 'extract-events: source or snapshot not found');
-    return [];
+    return { extracted: 0 };
   }
 
   // Self-monitoring sources feed the user's own profile/metrics directly (a later phase),
   // not competitor Events - Event.competitorId is required, so there's nothing to extract into.
   if (source.subjectType !== 'competitor' || !source.subjectId) {
-    return [];
+    return { extracted: 0 };
   }
 
   const competitor = await getCompetitor(db, source.workspaceId, source.subjectId);
   if (!competitor) {
     logger.error({ sourceId }, 'extract-events: competitor not found for source');
-    return [];
+    return { extracted: 0 };
   }
   const workspace = await getWorkspace(db, source.workspaceId);
   if (!workspace) {
     logger.error({ sourceId }, 'extract-events: workspace not found for source');
-    return [];
+    return { extracted: 0 };
   }
 
   const isFeedType = Boolean(getAdapter(source.type).items);
@@ -97,9 +87,8 @@ export async function runExtractEvents(
     loggedInput: { sourceId, snapshotId, workspaceId: source.workspaceId },
   });
 
-  if (!result) return [];
+  if (!result) return { extracted: 0 };
 
-  const candidates: CandidateEvent[] = [];
   for (const event of result.events) {
     const mapped = await Promise.all(
       event.offeringMentions.map((mention) =>
@@ -107,22 +96,21 @@ export async function runExtractEvents(
       ),
     );
 
-    const candidate: CandidateEvent = {
+    const candidate = {
       ...event,
-      workspaceId: source.workspaceId,
-      competitorId: competitor.id,
       sourceIds: [sourceId],
       snapshotIds: [snapshotId],
       offeringsAffected: mapped.map((m) => ({ id: m.offering.id, name: m.offering.name })),
     };
-    candidates.push(candidate);
-    logger.info(
-      { sourceId, snapshotId, type: candidate.type, title: candidate.title },
-      'candidate event extracted (process-event/Phase 5 not wired up yet - not stored)',
-    );
+
+    await enqueueProcessEvent({
+      workspaceId: source.workspaceId,
+      competitorId: competitor.id,
+      candidate,
+    });
   }
 
-  return candidates;
+  return { extracted: result.events.length };
 }
 
 async function buildDiffInput(

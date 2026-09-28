@@ -8,6 +8,8 @@ export * from './config/metrics';
 export * from './config/scheduling';
 export * from './util/hash';
 export * from './offerings/match';
+export * from './events/dedup';
+export * from './events/importance';
 
 // Domain
 export * from './domain/workspace';

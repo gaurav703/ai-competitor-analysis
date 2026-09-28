@@ -6,3 +6,4 @@ export * from './repositories/sources';
 export * from './repositories/snapshots';
 export * from './repositories/offerings';
 export * from './repositories/llm';
+export * from './repositories/events';

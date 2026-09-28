@@ -33,11 +33,21 @@ export default async function WorkspacePage({
         </p>
       </div>
 
+      <Link href={`/workspaces/${workspaceId}/competitors`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Competitors</p>
+          <p className="text-sm text-muted">
+            Add competitors and see what changed — pricing, offerings, reviews — with evidence for
+            every event.
+          </p>
+        </Card>
+      </Link>
+
       <Card className="space-y-2">
         <p className="font-medium">Your workspace is ready</p>
         <p className="text-sm text-muted">
-          Next up: add your business profile and competitors. Monitoring, comparisons and the “Where
-          am I lagging?” report will appear here as they are built.
+          Next up: add your business profile. Comparisons and the “Where am I lagging?” report will
+          appear here as they are built.
         </p>
       </Card>
     </div>

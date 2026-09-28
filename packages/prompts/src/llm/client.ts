@@ -114,8 +114,10 @@ export async function callLlmStructured<T>(
 
   let lastRawOutput: string | undefined;
   let lastError = 'unknown error';
+  let lastModel = deps.env.LLM_MODEL_MAIN;
 
   for (const attempt of attempts) {
+    lastModel = attempt.model;
     try {
       const raw = await callOpenRouterChat(
         deps.env,
@@ -145,7 +147,7 @@ export async function callLlmStructured<T>(
   await deps.onFailure?.({
     task: params.task,
     promptVersion: params.promptVersion,
-    model: deps.env.LLM_MODEL_BACKUP,
+    model: lastModel, // whichever model actually produced the final failure, not always backup
     input: params.loggedInput ?? params.userPrompt,
     rawOutput: lastRawOutput,
     error: lastError,

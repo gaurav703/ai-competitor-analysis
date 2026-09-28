@@ -2,7 +2,7 @@
 
 Status: `todo` · `in-progress` · `done`. Phase details: `docs/ROADMAP.md`.
 
-**Current phase:** Phase 5: Dedup, importance & timeline
+**Current phase:** Phase 6: Onboarding & source discovery
 
 **Testing cadence (D-003):** no manual/live-check gate on phases 1–4 — see `docs/DECISIONS.md`. Live/manual walkthroughs resume at Phase 5.
 
@@ -13,8 +13,8 @@ Status: `todo` · `in-progress` · `done`. Phase details: `docs/ROADMAP.md`.
 | 2 | Domain model & config | §4 | done |
 | 3 | Source monitoring pipeline | F3 | done |
 | 4 | LLM event extraction & offering taxonomy | F4 | done |
-| 5 | Dedup, importance & timeline | F5, F6, F7 | in-progress |
-| 6 | Onboarding & source discovery | F1, F2 | todo |
+| 5 | Dedup, importance & timeline | F5, F6, F7 | done |
+| 6 | Onboarding & source discovery | F1, F2 | in-progress |
 | 7 | Offering matrix, pricing & metrics | F8, F9 (part) | todo |
 | 8 | Comparison engine & core views | F9, F9b | todo |
 | 9 | Patterns & review intelligence | F10, F11 | todo |
@@ -70,7 +70,18 @@ Status: `todo` · `in-progress` · `done`. Phase details: `docs/ROADMAP.md`.
 - [x] `extract-events` queue/job: snapshot + previous → diff → cache check → LLM extract → Zod validate → map offerings → candidate events (logged; not yet stored — storage/dedup/importance is Phase 5's `process-event` step per SYSTEM_DESIGN §4.3)
 - [x] Deferred, documented rather than faked (D-004): the pgvector similarity tier of offering matching — no free embedding model has been evaluated yet, so a word-overlap (Jaccard) pre-filter stands in for it
 - [x] Lint, format, typecheck (all 5 workspace projects), tests (30), web + worker builds all pass
-- [ ] Not yet done: a live end-to-end smoke test (real fetch → real OpenRouter call) — infra is verified, the actual pipeline hasn't been run against a live source yet
+- [x] Live end-to-end smoke test against real Supabase + Upstash + OpenRouter — see the Phase 5 checklist below
+
+## Phase 5 checklist (F5, F6, F7)
+
+- [x] Dedup (`packages/core/src/events/dedup.ts`): `buildDedupKey` (competitor + type + normalized subject + time window) + `textSimilarity`/`isLikelyDuplicate` word-overlap fallback (pgvector deferred, D-004)
+- [x] Importance scoring (`packages/core/src/events/importance.ts`): wires Phase 2's `getEventTypeWeight`/`IMPORTANCE_ADJUSTMENTS`/`importanceLevelForScore` into `scoreImportance`, with a human-readable `reason` assembled from whichever rules fired
+- [x] `events` repository (`packages/db/src/repositories/events.ts`): `createEvent` + evidence junction inserts, `getEventByDedupKey`, `listRecentEventsForCompetitorType` (similarity-fallback candidates), `listEventsForCompetitor` (timeline query, evidence resolved per event)
+- [x] `process-event` job/queue: exact dedup key → merge; else similarity fallback → merge; else score importance and insert a real `Event` row with evidence links; re-validates the queued candidate with Zod (queue payloads aren't trusted just because they compiled once)
+- [x] Competitor timeline UI (F7): `/workspaces/[id]/competitors` (list + add), `/competitors/new` (add-competitor form/action, minimal - full onboarding is Phase 6), `/competitors/[id]` (reverse-chronological timeline, type/importance filters via query params, evidence expandable per event via `<details>`)
+- [x] Lint, format, typecheck (all 5 workspace projects), tests (41), web + worker builds all pass
+- [x] **Live end-to-end smoke test** (D-003: Phase 5 is where manual/live checks resume) against real Supabase + Upstash + OpenRouter, using the Phase 2 seed data: real `fetch()` to a live URL → real hash/diff → 2-fetch confirmation → real Snapshot row; real OpenRouter call → Zod-validated `{"events": []}` (correct - the test page has no real business content) → cached in `llm_cache`; a manufactured realistic candidate run twice through `process-event` → first call created a real `Event` row (score 4 → `medium`, matching the formula exactly), second call correctly **merged** into the same row instead of duplicating (checked via a direct SQL query, not just the function's return value). The retry→backup→log-failure path was also exercised for real: `llm_failures` recorded two genuine free-tier 429s from the backup model before a later run's main-model call succeeded - exactly the D-002 risk, handled as designed, not simulated.
+- [x] Bug fix surfaced by the live test: `llm_failures.model` always recorded the *backup* model regardless of which model actually produced the final failure; now tracks and logs the real last-attempted model
 
 ## Last session
 
@@ -80,4 +91,5 @@ Status: `todo` · `in-progress` · `done`. Phase details: `docs/ROADMAP.md`.
 - **2026-09-28:** Supabase + Upstash set up, `.env` filled, `pnpm db:migrate` run. Fixed a real bug in `apps/web/next.config.ts`: `@next/env`'s `loadEnvConfig` was returning a stale process-wide empty cache (Next's dev server pre-loads env for `apps/web`, which has no `.env` files, before `next.config.ts` runs) — fixed with `forceReload: true`. Verified worker connects to DB + Redis and web responds. D-003 accepted: no manual/live-check gate on phases 1–4; deferred the browser sign-up walkthrough to Phase 5. Phase 1 marked done. First commit made and pushed to GitHub.
 - **2026-09-28:** Phase 2 done. Domain Zod schemas for all §4 entities; config for dimensions, thresholds, importance (with per-industry overrides), source suggestions and built-in metrics (food_hospitality + software, all 10 dimensions). Drizzle schema for all 22 tables incl. join tables, `workspace_id` + RLS on every one; pgvector enabled (D-004: `vector(768)` placeholder). Migration generated and applied to Supabase. Seed script creates a demo workspace per industry, idempotent, runs the full config → DB chain. Caught and fixed two real bugs along the way: a metric-id collision across the two industry configs (would have silently shadowed one definition) and a zod v4 `record()` vs `partialRecord()` mistake (exhaustive-key validation failing on intentionally-sparse per-industry override maps). Lint/format/typecheck (all 5 projects)/tests (19)/build all pass.
 - **2026-09-29:** Phase 3 done: `SourceAdapter` interface + website/Google News/Play Store adapters, robots.txt + per-domain rate limiting, 2-fetch confirmation, source health/backoff, `fetch-source` queue. Phase 4 done: OpenRouter LLM wrapper with retry→backup→log-failure, `llm_cache`/`llm_failures` tables + migration, `extractEvents.v1`/`mapOffering.v1` prompts, offering mapping (alias → LLM → create new), `extract-events` queue producing validated candidate events. D-004 extended: pgvector similarity deferred for both offering matching and (later) event dedup - a word-overlap pre-filter stands in for it. Started Phase 5 (dedup, importance scoring, process-event, events repo, timeline UI) then rolled it back on request to land 3+4 first; that work is not in this commit and will be redone. Caught real bugs along the way: an `@cip/core`/`@cip/db` type-name collision on `Source` (Zod input type vs DB row, same name, different nullability) that the type system correctly rejected; a `gplay.sort` typing gap in `google-play-scraper`'s own `.d.ts`; a broken sync `items()` adapter method for an inherently-async RSS parse (fixed by making the interface method itself async, not by working around it). Lint/format/typecheck (5 projects)/tests (30)/build all pass. No live smoke test yet (no fetch has been run against a real source or OpenRouter).
-- **Next step:** Phase 5 — dedup (F5), importance scoring (F6, wiring Phase 2's config), competitor timeline UI (F7), and a minimal "add competitor" flow (full onboarding is Phase 6). Then a live smoke test: real source → real OpenRouter call → see a candidate event.
+- **2026-09-29:** Phase 5 done: dedup (exact key + word-overlap similarity fallback), importance scoring (wired to Phase 2's config), `process-event` job/queue (dedup → score → store), competitor timeline UI (F7) with type/importance filters and expandable evidence, minimal add-competitor flow. Ran a real live end-to-end smoke test (D-003: Phase 5 resumes manual/live checks) against Supabase + Upstash + OpenRouter using the Phase 2 seed data: real fetch → real Snapshot, real OpenRouter call → validated + cached, a manufactured candidate run twice through process-event created one real Event row then correctly merged the second call into it (verified with a direct SQL check, not just trusting the return value). Also exercised the failure path for real: two genuine free-tier 429s got logged to `llm_failures` before a later call succeeded - the exact risk D-002 flagged, handled as designed. Fixed a real bug the live test surfaced: `llm_failures.model` always logged the backup model even when the main model was what actually failed last. Lint/format/typecheck (5 projects)/tests (41)/build all pass.
+- **Next step:** Phase 6 — onboarding & source discovery (F1, F2): business profile extraction wizard, industry-based source suggestions (config already exists from Phase 2 - `getSuggestedSourceTypes`), user confirms/edits before sources go live.

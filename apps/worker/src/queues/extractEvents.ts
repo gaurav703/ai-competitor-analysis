@@ -4,13 +4,14 @@ import type { Logger } from 'pino';
 import type { Database } from '@cip/db';
 import type { LlmDeps } from '@cip/prompts';
 import { runExtractEvents } from '../jobs/extractEvents';
-import { QUEUE_NAMES, type ExtractEventsJobData } from './names';
+import { QUEUE_NAMES, type ExtractEventsJobData, type ProcessEventJobData } from './names';
 
 export async function startExtractEventsQueue(
   connection: Redis,
   db: Database,
   llmDeps: LlmDeps,
   logger: Logger,
+  enqueueProcessEvent: (data: ProcessEventJobData) => Promise<void>,
 ) {
   const queue = new Queue<ExtractEventsJobData>(QUEUE_NAMES.extractEvents, { connection });
 
@@ -18,8 +19,7 @@ export async function startExtractEventsQueue(
     QUEUE_NAMES.extractEvents,
     async (job) => {
       const { sourceId, snapshotId } = job.data;
-      const candidates = await runExtractEvents({ db, llmDeps, logger }, sourceId, snapshotId);
-      return { extracted: candidates.length };
+      return runExtractEvents({ db, llmDeps, logger, enqueueProcessEvent }, sourceId, snapshotId);
     },
     // Concurrency 1: free-tier LLM rate limits (D-002) are the real bottleneck here, not CPU.
     { connection, concurrency: 1, drainDelay: 30, stalledInterval: 5 * 60 * 1000 },
