@@ -33,6 +33,17 @@ export default async function WorkspacePage({
         </p>
       </div>
 
+      <Link href={`/workspaces/${workspaceId}/profile`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Business profile</p>
+          <p className="text-sm text-muted">
+            {workspace.businessProfile
+              ? 'Saved. Offerings, pricing and target customers used to compare you against competitors.'
+              : 'Not set up yet — extract from your website or a short description, then review and edit.'}
+          </p>
+        </Card>
+      </Link>
+
       <Link href={`/workspaces/${workspaceId}/competitors`}>
         <Card className="space-y-2 transition-colors hover:bg-background">
           <p className="font-medium">Competitors</p>
@@ -43,11 +54,20 @@ export default async function WorkspacePage({
         </Card>
       </Link>
 
+      <Link href={`/workspaces/${workspaceId}/sources`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Your own sources</p>
+          <p className="text-sm text-muted">
+            Monitor your own pricing page, menu or changelog so your profile stays current
+            automatically.
+          </p>
+        </Card>
+      </Link>
+
       <Card className="space-y-2">
         <p className="font-medium">Your workspace is ready</p>
         <p className="text-sm text-muted">
-          Next up: add your business profile. Comparisons and the “Where am I lagging?” report will
-          appear here as they are built.
+          Comparisons and the “Where am I lagging?” report will appear here as they are built.
         </p>
       </Card>
     </div>

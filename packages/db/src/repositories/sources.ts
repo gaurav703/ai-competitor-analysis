@@ -1,10 +1,26 @@
-import { eq } from 'drizzle-orm';
-import { THRESHOLDS } from '@cip/core';
+import { and, eq } from 'drizzle-orm';
+import { THRESHOLDS, type SubjectType } from '@cip/core';
 import type { Database } from '../client';
 import { type NewSource, type Source, sources } from '../schema';
 
 export function listActiveSources(db: Database): Promise<Source[]> {
   return db.select().from(sources).where(eq(sources.status, 'active'));
+}
+
+// F2: what's already being monitored for this subject (a competitor, or the workspace's own
+// business), so onboarding only offers to add sources that don't already exist.
+export function listSourcesForSubject(
+  db: Database,
+  workspaceId: string,
+  subjectType: SubjectType,
+  subjectId?: string,
+): Promise<Source[]> {
+  const conditions = [eq(sources.workspaceId, workspaceId), eq(sources.subjectType, subjectType)];
+  if (subjectId) conditions.push(eq(sources.subjectId, subjectId));
+  return db
+    .select()
+    .from(sources)
+    .where(and(...conditions));
 }
 
 export function createSource(db: Database, input: NewSource): Promise<Source> {

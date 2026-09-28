@@ -54,7 +54,15 @@ export default async function CompetitorTimelinePage({
         >
           ← Competitors
         </Link>
-        <h1 className="text-2xl font-semibold">{competitor.name}</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-semibold">{competitor.name}</h1>
+          <Link
+            href={`/workspaces/${workspaceId}/competitors/${competitorId}/sources`}
+            className="text-sm text-muted underline hover:text-foreground"
+          >
+            Manage sources
+          </Link>
+        </div>
         {competitor.website ? <p className="text-sm text-muted">{competitor.website}</p> : null}
       </div>
 

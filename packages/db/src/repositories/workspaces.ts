@@ -1,5 +1,5 @@
 import { and, desc, eq } from 'drizzle-orm';
-import type { CreateWorkspaceInput } from '@cip/core';
+import type { BusinessProfile, CreateWorkspaceInput } from '@cip/core';
 import type { Database } from '../client';
 import { workspaces, type Workspace } from '../schema';
 
@@ -50,5 +50,20 @@ export async function getWorkspace(
   workspaceId: string,
 ): Promise<Workspace | undefined> {
   const [row] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+  return row;
+}
+
+// F1: saved once the user reviews and confirms the auto-extracted draft (or edits it first).
+export async function saveBusinessProfile(
+  db: Database,
+  ownerId: string,
+  workspaceId: string,
+  profile: BusinessProfile,
+): Promise<Workspace | undefined> {
+  const [row] = await db
+    .update(workspaces)
+    .set({ businessProfile: profile })
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, ownerId)))
+    .returning();
   return row;
 }

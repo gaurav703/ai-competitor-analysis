@@ -51,5 +51,7 @@ export async function createCompetitorAction(
     return { values, error: 'Could not add the competitor. Please try again.' };
   }
 
-  redirect(`/workspaces/${workspaceId}/competitors/${competitorId}`);
+  // Straight into source suggestions (F2) - onboarding flows add competitor -> confirm sources
+  // -> land on the timeline, rather than a competitor page with nothing monitored yet.
+  redirect(`/workspaces/${workspaceId}/competitors/${competitorId}/sources`);
 }
