@@ -9,6 +9,7 @@ import {
 import type { Database } from '@cip/db';
 import {
   createEvent,
+  createPriceEntry,
   getEventByDedupKey,
   getWorkspace,
   linkEvidence,
@@ -107,5 +108,34 @@ export async function runProcessEvent(
   if (level === 'high')
     logger.info({ eventId: created.id }, 'high-importance event (alerts land in Phase 10)');
 
+  // "Apply": update prices from the event (SYSTEM_DESIGN §4.1 pipeline - the step between
+  // importance scoring and recompute-comparison). Offerings are already updated by the mapping
+  // step in extractEvents; MetricValue extraction from events is a further phase.
+  await applyPricingChange(db, workspaceId, competitorId, candidate);
+
   return { outcome: 'created', eventId: created.id, importance: level };
+}
+
+async function applyPricingChange(
+  db: Database,
+  workspaceId: string,
+  competitorId: string,
+  candidate: ProcessEventCandidate,
+): Promise<void> {
+  if (candidate.type !== 'pricing_change') return;
+  const { item, newPrice, currency } = candidate.structured;
+  if (typeof newPrice !== 'number' || typeof currency !== 'string') return;
+
+  const offeringId = candidate.offeringsAffected[0]?.id;
+  await createPriceEntry(db, {
+    workspaceId,
+    offeringId,
+    subjectType: 'competitor',
+    subjectId: competitorId,
+    label: typeof item === 'string' ? item : candidate.title,
+    amount: newPrice.toFixed(2),
+    currency: currency.toUpperCase(),
+    observedAt: candidate.occurredAt ? new Date(candidate.occurredAt) : new Date(),
+    sourceId: candidate.sourceIds[0],
+  });
 }

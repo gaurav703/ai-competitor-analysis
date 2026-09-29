@@ -8,3 +8,4 @@ export * from './repositories/offerings';
 export * from './repositories/priceEntries';
 export * from './repositories/llm';
 export * from './repositories/events';
+export * from './repositories/metricValues';

@@ -64,10 +64,39 @@ export default async function WorkspacePage({
         </Card>
       </Link>
 
+      <Link href={`/workspaces/${workspaceId}/matrix`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Offering matrix</p>
+          <p className="text-sm text-muted">
+            You vs. each competitor, offering by offering - yes, no or unknown, every cell traceable
+            to evidence.
+          </p>
+        </Card>
+      </Link>
+
+      <Link href={`/workspaces/${workspaceId}/prices`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Price position</p>
+          <p className="text-sm text-muted">
+            Latest known price per equivalent offering, currency and unit as recorded.
+          </p>
+        </Card>
+      </Link>
+
+      <Link href={`/workspaces/${workspaceId}/metrics`}>
+        <Card className="space-y-2 transition-colors hover:bg-background">
+          <p className="font-medium">Your metrics</p>
+          <p className="text-sm text-muted">
+            Fill in or correct your own values across all 10 comparison dimensions.
+          </p>
+        </Card>
+      </Link>
+
       <Card className="space-y-2">
         <p className="font-medium">Your workspace is ready</p>
         <p className="text-sm text-muted">
-          Comparisons and the “Where am I lagging?” report will appear here as they are built.
+          The comparison engine and the “Where am I lagging?” report will appear here as they are
+          built.
         </p>
       </Card>
     </div>
